@@ -1,0 +1,31 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { siteConfig } from "@/config/site";
+---
+
+<BaseLayout title="Terms" description={`Terms starter page for ${siteConfig.name}.`}>
+  <section class="mx-auto max-w-[900px] px-6 py-16 md:px-10 md:py-24">
+    <h1 class="display text-5xl leading-tight md:text-7xl">Terms</h1>
+    <div class="prose mt-10">
+      <p>
+        This starter terms page gives buyers a production-ready location for site rules, editorial disclaimers, intellectual property notices, and acceptable-use language.
+      </p>
+      <h2>Use of the Site</h2>
+      <p>
+        Replace this section with the rules that apply to your publication, products, services, comments, submissions, accounts, or memberships.
+      </p>
+      <h2>Editorial Content</h2>
+      <p>
+        Clarify whether content is informational, sponsored, affiliate-supported, journalistic, review-based, or otherwise subject to specific disclosure requirements.
+      </p>
+      <h2>Intellectual Property</h2>
+      <p>
+        Explain who owns the site content, photography, branding, code customizations, downloads, and any reader-submitted materials.
+      </p>
+      <h2>Contact</h2>
+      <p>
+        For terms questions, contact <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

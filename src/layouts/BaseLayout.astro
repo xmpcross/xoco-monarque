@@ -1,0 +1,137 @@
+---
+import type { AstroComponentFactory } from "astro/runtime/server/index.js";
+import SiteFooter from "@/components/SiteFooter.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import { siteConfig } from "@/config/site";
+import "@/styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: "website" | "article";
+  noindex?: boolean;
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const {
+  title = siteConfig.title,
+  description = siteConfig.description,
+  image = siteConfig.socialImage,
+  type = "website",
+  noindex = false,
+  structuredData,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).toString();
+const absoluteImage = new URL(image, siteConfig.siteUrl).toString();
+const pageTitle = title === siteConfig.title ? title : `${title} | ${siteConfig.name}`;
+const schema =
+  structuredData ??
+  ({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: siteConfig.name,
+    url: siteConfig.siteUrl,
+    description: siteConfig.description,
+    publisher: {
+      "@type": "Person",
+      name: siteConfig.authorName,
+    },
+  } satisfies Record<string, unknown>);
+
+// Optional: renders nothing once the file is deleted.
+const BuyButton = Object.values(
+  import.meta.glob<{ default: AstroComponentFactory }>("../components/BuyButton.astro", {
+    eager: true,
+  }),
+)[0]?.default;
+---
+
+<!doctype html>
+<html lang={siteConfig.language}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/cormorant-garamond-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title={`${siteConfig.name} RSS`} href={new URL("/rss.xml", siteConfig.siteUrl).toString()} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:locale" content={siteConfig.locale} />
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={siteConfig.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={absoluteImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={absoluteImage} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <SiteHeader />
+    <main id="content">
+      <slot />
+    </main>
+    <script>
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (!prefersReducedMotion) {
+        const revealSelectors = [
+          "#content > section > div > *",
+          "#content article",
+          "#content .prose > *",
+          "#content form",
+          "#content figure",
+          "#content blockquote",
+        ];
+        const candidates = Array.from(document.querySelectorAll<HTMLElement>(revealSelectors.join(","))).filter(
+          (element) => !element.closest("[hidden], [aria-hidden='true']"),
+        );
+        // Only the innermost matches animate, so nothing fades in twice.
+        // Anything on the first screen is left alone, so first paint never hides content.
+        const revealItems = candidates.filter(
+          (element) =>
+            !candidates.some((other) => other !== element && element.contains(other)) &&
+            element.getBoundingClientRect().top >= window.innerHeight,
+        );
+
+        revealItems.forEach((element) => {
+          element.dataset.reveal = "";
+          const siblingIndex = element.parentElement ? Array.from(element.parentElement.children).indexOf(element) : 0;
+          element.style.setProperty("--reveal-delay", `${Math.min(siblingIndex % 4, 3) * 40}ms`);
+        });
+
+        document.documentElement.classList.add("reveal-ready");
+
+        const reveal = (element: Element) => element.classList.add("is-visible");
+
+        if ("IntersectionObserver" in window) {
+          const observer = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                reveal(entry.target);
+                observer.unobserve(entry.target);
+              });
+            },
+            { rootMargin: "0px 0px 8% 0px", threshold: 0 },
+          );
+
+          revealItems.forEach((element) => observer.observe(element));
+        } else {
+          revealItems.forEach(reveal);
+        }
+      }
+    </script>
+    <SiteFooter />
+    {BuyButton && <BuyButton />}
+  </body>
+</html>

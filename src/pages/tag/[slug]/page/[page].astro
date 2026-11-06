@@ -1,0 +1,93 @@
+---
+import { getCollection } from "astro:content";
+import ArchiveGrid from "@/components/ArchiveGrid.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { siteConfig } from "@/config/site";
+import { getAllTags, getPostsByTag, paginatePosts } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("posts");
+
+  return getAllTags(posts).flatMap((tag) => {
+    const tagPosts = getPostsByTag(posts, tag.slug);
+    const { page } = paginatePosts(tagPosts, 1, `/tag/${tag.slug}/`);
+
+    return Array.from({ length: Math.max(page.totalPages - 1, 0) }, (_, index) => {
+      const currentPage = index + 2;
+      const paginated = paginatePosts(tagPosts, currentPage, `/tag/${tag.slug}/`);
+
+      return {
+        params: { slug: tag.slug, page: String(currentPage) },
+        props: { tag, posts: paginated.posts, page: paginated.page },
+      };
+    });
+  });
+}
+
+const { tag, posts, page } = Astro.props as {
+  tag: ReturnType<typeof getAllTags>[number];
+  posts: Awaited<ReturnType<typeof getCollection<"posts">>>;
+  page: ReturnType<typeof paginatePosts>["page"];
+};
+const archiveUrl = new URL(`/tag/${tag.slug}/page/${page.currentPage}/`, siteConfig.siteUrl).toString();
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `Stories tagged ${tag.name} - Page ${page.currentPage}`,
+    description: `Browse page ${page.currentPage} of Monarque stories tagged ${tag.name}.`,
+    url: archiveUrl,
+    isPartOf: {
+      "@type": "WebSite",
+      name: siteConfig.name,
+      url: siteConfig.siteUrl,
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Archive",
+        item: new URL("/blog/", siteConfig.siteUrl).toString(),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: `#${tag.name}`,
+        item: new URL(`/tag/${tag.slug}/`, siteConfig.siteUrl).toString(),
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `Page ${page.currentPage}`,
+        item: archiveUrl,
+      },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title={`#${tag.name} - Page ${page.currentPage}`}
+  description={`Browse page ${page.currentPage} of Monarque stories tagged ${tag.name}.`}
+  structuredData={structuredData}
+>
+  <section class="mx-auto max-w-[1440px] px-6 py-16 md:px-10 md:py-24">
+    <nav class="flex flex-wrap items-center gap-3 text-sm text-muted" aria-label="Breadcrumb">
+      <a class="link-line text-muted hover:text-pearl" href="/blog/">Archive</a>
+      <span aria-hidden="true">/</span>
+      <a class="link-line text-muted hover:text-pearl" href={`/tag/${tag.slug}/`}>#{tag.name}</a>
+      <span aria-hidden="true">/</span>
+      <span class="text-gold" aria-current="page">Page {page.currentPage}</span>
+    </nav>
+    <h1 class="display mt-4 max-w-4xl text-5xl leading-tight md:text-7xl">#{tag.name}</h1>
+    <p class="mt-5 max-w-3xl text-lg leading-relaxed text-muted md:text-xl">
+      Page {page.currentPage} of the tag archive.
+    </p>
+
+    <ArchiveGrid posts={posts} page={page} />
+  </section>
+</BaseLayout>

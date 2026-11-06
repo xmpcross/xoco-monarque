@@ -1,0 +1,10 @@
+{
+  "name": "monarque",
+  "compatibility_date": "2026-07-10",
+  "assets": {
+    "directory": "./dist",
+  },
+  "build": {
+    "command": "npm run build",
+  },
+}

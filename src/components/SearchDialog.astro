@@ -1,0 +1,241 @@
+---
+import LocalIcon from "@/components/LocalIcon.astro";
+import { siteConfig } from "@/config/site";
+
+/**
+ * Search, opened from the header, with Cmd/Ctrl+K or with "/". It rests on the
+ * field alone; rows appear once there is a query. `/search-index.json` is fetched on
+ * first use.
+ */
+const kbd = "inline-grid h-5 min-w-5 place-items-center border border-line bg-raised px-1 text-[0.6875rem] font-semibold text-pearl";
+---
+
+<dialog
+  data-search-dialog
+  aria-labelledby="search-title"
+  class="m-0 h-[100dvh] max-h-none w-full max-w-none overflow-y-auto bg-transparent p-0 text-pearl backdrop:bg-ink/75 backdrop:backdrop-blur-sm"
+>
+  <div class="flex min-h-full items-start justify-center px-4 pb-4 pt-[clamp(0.75rem,12vh,7rem)]">
+    <form role="search" aria-label="Site search" class="search-panel w-full max-w-xl border border-line bg-charcoal shadow-[0_30px_80px_-20px_rgb(0_0_0/0.7)]" data-search-panel>
+      <div class="flex items-center gap-3 px-5">
+        <LocalIcon name="search" class="h-5 w-5 shrink-0 text-gold" />
+        <h2 id="search-title" class="sr-only">Search {siteConfig.name}</h2>
+        <label class="sr-only" for="site-search">Search stories, departments, authors, and tags</label>
+        <input
+          id="site-search"
+          type="search"
+          data-search-input
+          placeholder="Search hotels, watches, interiors..."
+          autocomplete="off"
+          enterkeyhint="go"
+          aria-describedby="search-summary"
+          class="h-16 w-full min-w-0 bg-transparent text-lg text-pearl outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
+        />
+        <button type="button" data-search-close aria-label="Close search" class="hidden shrink-0 sm:block">
+          <kbd class={kbd}>Esc</kbd>
+        </button>
+        <button type="button" data-search-close aria-label="Close search" class="grid h-9 w-9 shrink-0 place-items-center text-muted hover:text-pearl sm:hidden">
+          <LocalIcon name="x" class="h-4 w-4" />
+        </button>
+      </div>
+
+      <p id="search-summary" data-search-summary aria-live="polite" class="sr-only"></p>
+
+      <div data-search-body hidden class="border-t border-line">
+        <div class="max-h-[min(60vh,28rem)] overflow-y-auto overscroll-contain p-2">
+          <div data-search-results class="grid grid-cols-[minmax(0,1fr)]"></div>
+          <div data-search-empty hidden class="px-3 py-10 text-center">
+            <p class="display text-2xl leading-tight">No matches</p>
+            <p class="mt-1 text-sm text-muted">Try a destination, a department, or a writer.</p>
+          </div>
+        </div>
+        <div class="hidden items-center gap-4 border-t border-line px-5 py-2.5 text-xs text-muted sm:flex" aria-hidden="true">
+          <span class="inline-flex items-center gap-1.5"><kbd class={kbd}>↑</kbd><kbd class={kbd}>↓</kbd> to navigate</span>
+          <span class="inline-flex items-center gap-1.5"><kbd class={kbd}>↵</kbd> to open</span>
+        </div>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<template data-search-result-template>
+  <a class="group flex min-w-0 items-center gap-4 px-3 py-2.5 transition-colors hover:bg-raised focus-visible:bg-raised focus-visible:outline-none">
+    <span class="min-w-0 flex-1">
+      <span data-field="title" class="display block truncate text-xl leading-snug transition-colors group-hover:text-gold group-focus-visible:text-gold"></span>
+      <span class="mt-0.5 flex items-center gap-1.5 overflow-hidden text-[0.8125rem] text-muted">
+        <span data-field="type" class="shrink-0 font-semibold text-gold"></span>
+        <span data-field="separator" aria-hidden="true">&middot;</span>
+        <span data-field="meta" class="truncate"></span>
+      </span>
+    </span>
+    <LocalIcon name="arrow-right" class="h-4 w-4 shrink-0 text-muted opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100" />
+  </a>
+</template>
+
+<style>
+  .search-panel {
+    animation: search-in 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes search-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  :global(html:has([data-search-dialog][open])) {
+    overflow: hidden;
+  }
+</style>
+
+<script>
+  import { RESULT_LIMIT, resultCount, searchItems, type SearchItem } from "@/lib/search";
+
+  const dialog = document.querySelector<HTMLDialogElement>("[data-search-dialog]");
+  const panel = dialog?.querySelector<HTMLFormElement>("[data-search-panel]");
+  const input = dialog?.querySelector<HTMLInputElement>("[data-search-input]");
+  const body = dialog?.querySelector<HTMLElement>("[data-search-body]");
+  const results = dialog?.querySelector<HTMLElement>("[data-search-results]");
+  const empty = dialog?.querySelector<HTMLElement>("[data-search-empty]");
+  const summary = dialog?.querySelector<HTMLElement>("[data-search-summary]");
+  const template = document.querySelector<HTMLTemplateElement>("[data-search-result-template]");
+  const toggles = Array.from(document.querySelectorAll<HTMLElement>("[data-search-toggle]"));
+
+  if (dialog && panel && input && body && results && empty && summary && template && typeof dialog.showModal === "function") {
+    let items: SearchItem[] = [];
+    let indexRequest: Promise<SearchItem[]> | undefined;
+
+    const isSearchItem = (value: unknown): value is SearchItem => {
+      const item = value as Partial<SearchItem> | null;
+      return typeof item?.title === "string" && typeof item.href === "string" && typeof item.keywords === "string" && Array.isArray(item.meta);
+    };
+
+    const loadIndex = () => {
+      indexRequest ??= fetch("/search-index.json")
+        .then((response) => {
+          if (!response.ok) throw new Error("Search index unavailable");
+          return response.json() as Promise<SearchItem[]>;
+        })
+        .then((loaded) => {
+          if (Array.isArray(loaded)) items = loaded.filter(isSearchItem);
+          return items;
+        })
+        .catch(() => {
+          indexRequest = undefined;
+          return items;
+        });
+
+      return indexRequest;
+    };
+
+    const resultRow = (item: SearchItem) => {
+      const row = template.content.cloneNode(true) as DocumentFragment;
+      const field = (name: string) => row.querySelector<HTMLElement>(`[data-field="${name}"]`);
+      const link = row.querySelector("a");
+      if (link) link.href = item.href;
+      field("title")!.textContent = item.title;
+      field("type")!.textContent = item.type;
+      field("meta")!.textContent = item.meta.join(" · ");
+      if (!item.meta.length) field("separator")?.remove();
+      return row;
+    };
+
+    const links = () => Array.from(results.querySelectorAll<HTMLAnchorElement>("a"));
+
+    const render = () => {
+      const query = input.value.trim();
+      body.hidden = !query;
+
+      if (!query) {
+        summary.textContent = "";
+        results.replaceChildren();
+        return;
+      }
+
+      const matches = searchItems(items, query);
+      summary.textContent = `${resultCount(matches.length)} for “${query}”.`;
+      empty.hidden = matches.length > 0;
+      results.replaceChildren(...matches.slice(0, RESULT_LIMIT).map(resultRow));
+    };
+
+    const open = () => {
+      if (!dialog.open) dialog.showModal();
+      render();
+      void loadIndex().then(render);
+      window.requestAnimationFrame(() => input.focus());
+    };
+
+    const close = () => {
+      if (dialog.open) dialog.close();
+    };
+
+    toggles.forEach((toggle) => {
+      toggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        open();
+      });
+      // The index is usually needed a moment later; start early.
+      toggle.addEventListener("pointerenter", () => void loadIndex());
+      toggle.addEventListener("focus", () => void loadIndex());
+    });
+
+    dialog.querySelectorAll("[data-search-close]").forEach((button) => button.addEventListener("click", close));
+    // A search field eats the first Escape to clear itself; close on the first one.
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      close();
+    });
+    dialog.addEventListener("click", (event) => {
+      if (event.target instanceof Node && !panel.contains(event.target)) close();
+    });
+    results.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("a")) close();
+    });
+
+    // There is no results page, so Enter opens the best match.
+    panel.addEventListener("submit", (event) => {
+      event.preventDefault();
+      links()[0]?.click();
+    });
+
+    input.addEventListener("input", render);
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown") return;
+      const first = links()[0];
+      if (!first) return;
+      event.preventDefault();
+      first.focus();
+    });
+
+    results.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const rows = links();
+      const current = rows.indexOf(document.activeElement as HTMLAnchorElement);
+      if (current === -1) return;
+
+      event.preventDefault();
+      if (event.key === "ArrowDown") (rows[current + 1] ?? rows[0]).focus();
+      else if (current === 0) input.focus();
+      else rows[current - 1].focus();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const target = event.target;
+      // A closed dialog can keep focus on its field, which must not swallow the shortcut.
+      const isTyping =
+        target instanceof HTMLElement &&
+        !target.closest("dialog:not([open])") &&
+        (target.matches("input, textarea, select") || target.isContentEditable);
+      const isCommandKey = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
+      const isSlashKey = event.key === "/" && !isTyping && !event.metaKey && !event.ctrlKey && !event.altKey;
+
+      if (!isCommandKey && !isSlashKey) return;
+      event.preventDefault();
+
+      if (dialog.open && isCommandKey) close();
+      else open();
+    });
+  }
+</script>

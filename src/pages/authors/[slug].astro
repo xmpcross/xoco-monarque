@@ -1,0 +1,57 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, render } from "astro:content";
+import PostCard from "@/components/PostCard.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { entrySlug, getPostsByAuthor, type Author } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const authors = await getCollection("authors");
+  return authors.map((author) => ({
+    params: { slug: entrySlug(author) },
+    props: { author },
+  }));
+}
+
+const { author } = Astro.props as { author: Author };
+const posts = getPostsByAuthor(await getCollection("posts"), entrySlug(author));
+const { Content } = await render(author);
+---
+
+<BaseLayout title={author.data.name} description={author.data.bio}>
+  <section class="mx-auto grid max-w-[1180px] gap-10 px-6 py-16 md:px-10 md:py-24 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+    <figure>
+      <Image
+        src={author.data.avatar.src}
+        alt={author.data.avatar.alt}
+        widths={[480, 768, 1024]}
+        sizes="(min-width: 1024px) 36vw, 100vw"
+        loading="eager"
+        class="aspect-[4/5] w-full object-cover"
+      />
+    </figure>
+    <div>
+      <h1 class="display text-5xl leading-tight md:text-7xl">{author.data.name}</h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">{author.data.role} &middot; {author.data.location}</p>
+      <div class="prose mt-8">
+        <Content />
+      </div>
+      {author.data.social.length > 0 && (
+        <nav class="mt-8 flex flex-wrap gap-4" aria-label={`${author.data.name} social links`}>
+          {author.data.social.map((item) => (
+            <a class="button button-ghost" href={item.href} rel="noreferrer" target="_blank">{item.label}</a>
+          ))}
+        </nav>
+      )}
+    </div>
+  </section>
+
+  <section class="border-t border-line px-6 py-16 md:px-10 md:py-24" aria-labelledby="author-stories">
+    <div class="mx-auto max-w-[1440px]">
+      <h2 id="author-stories" class="display text-4xl md:text-5xl">Stories by {author.data.name}</h2>
+      <div class="mt-10 grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => <PostCard post={post} />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,31 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { siteConfig } from "@/config/site";
+---
+
+<BaseLayout title="Privacy Policy" description={`Privacy policy starter page for ${siteConfig.name}.`}>
+  <section class="mx-auto max-w-[900px] px-6 py-16 md:px-10 md:py-24">
+    <h1 class="display text-5xl leading-tight md:text-7xl">Privacy Policy</h1>
+    <div class="prose mt-10">
+      <p>
+        This starter privacy policy is included so buyers have a clear place to document how their publication collects, uses, stores, and protects visitor information.
+      </p>
+      <h2>Information You Collect</h2>
+      <p>
+        Replace this section with the data your site actually collects, such as contact form submissions, newsletter subscriptions, analytics events, comments, purchases, or account details.
+      </p>
+      <h2>How You Use Information</h2>
+      <p>
+        Explain the purpose of each collection point, including responding to messages, sending newsletters, improving editorial content, preventing abuse, or complying with legal obligations.
+      </p>
+      <h2>Third-Party Services</h2>
+      <p>
+        List any newsletter provider, analytics provider, form endpoint, embedded media service, payment processor, ad network, or hosting platform that can receive visitor data.
+      </p>
+      <h2>Contact</h2>
+      <p>
+        For privacy questions, contact <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

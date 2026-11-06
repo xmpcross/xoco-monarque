@@ -1,0 +1,39 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { siteConfig } from "@/config/site";
+
+const form = siteConfig.forms.contact;
+---
+
+<BaseLayout title="Contact" description="Contact page starter for the Monarque Astro theme.">
+  <section class="mx-auto grid max-w-[1180px] gap-10 px-6 py-16 md:px-10 md:py-24 lg:grid-cols-[0.8fr_1.2fr]">
+    <div>
+      <h1 class="display text-5xl leading-tight md:text-7xl">Send a note to the desk.</h1>
+      <p class="mt-5 text-lg leading-relaxed text-muted md:text-xl">
+        This starter form is semantic and provider-neutral. Connect it to your preferred form service before launch.
+      </p>
+    </div>
+    <form action={form.action || undefined} method={form.method} class="grid gap-5 border border-line bg-panel p-6">
+      {form.honeypotFieldName && (
+        <div class="hidden" aria-hidden="true">
+          <label for="company">Company</label>
+          <input id="company" name={form.honeypotFieldName} tabindex="-1" autocomplete="off" />
+        </div>
+      )}
+      <div>
+        <label class="mb-2 block text-sm font-bold uppercase tracking-[0.14em] text-muted" for="name">Name</label>
+        <input class="min-h-12 w-full border border-line bg-ink px-4 text-pearl" id="name" name={form.nameFieldName} autocomplete="name" required />
+      </div>
+      <div>
+        <label class="mb-2 block text-sm font-bold uppercase tracking-[0.14em] text-muted" for="email">Email</label>
+        <input class="min-h-12 w-full border border-line bg-ink px-4 text-pearl" id="email" name={form.emailFieldName} type="email" autocomplete="email" required />
+      </div>
+      <div>
+        <label class="mb-2 block text-sm font-bold uppercase tracking-[0.14em] text-muted" for="message">Message</label>
+        <textarea class="min-h-40 w-full border border-line bg-ink px-4 py-3 text-pearl" id="message" name={form.messageFieldName} required></textarea>
+      </div>
+      <p class="text-sm text-muted">Default contact email: <a class="link-line text-pearl" href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a></p>
+      <button class="button button-primary justify-self-start" type="submit">Send Message</button>
+    </form>
+  </section>
+</BaseLayout>

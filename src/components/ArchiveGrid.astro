@@ -1,0 +1,26 @@
+---
+import Pagination from "@/components/Pagination.astro";
+import PostCard from "@/components/PostCard.astro";
+import type { PaginationPage, Post } from "@/lib/content";
+
+interface Props {
+  posts: Post[];
+  page?: PaginationPage;
+  emptyMessage?: string;
+}
+
+const { posts, page, emptyMessage = "No stories are published in this archive yet." } = Astro.props;
+---
+
+{
+  posts.length > 0 ? (
+    <>
+      <div class="mt-14 grid gap-10 md:grid-cols-2 xl:grid-cols-3">
+        {posts.map((post) => <PostCard post={post} />)}
+      </div>
+      {page && <Pagination page={page} />}
+    </>
+  ) : (
+    <p class="mt-10 border border-line bg-panel p-6 text-muted">{emptyMessage}</p>
+  )
+}

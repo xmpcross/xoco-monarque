@@ -1,0 +1,283 @@
+---
+import { Image } from "astro:assets";
+import { categories } from "@/config/categories";
+import { siteConfig } from "@/config/site";
+import LocalIcon from "@/components/LocalIcon.astro";
+import SearchDialog from "@/components/SearchDialog.astro";
+
+const currentPath = Astro.url.pathname;
+const isActive = (href: string) => (href === "/" ? currentPath === "/" : currentPath.startsWith(href));
+const isHome = currentPath === "/";
+const leftLinks = siteConfig.navigation.slice(0, 2);
+const rightLinks = siteConfig.navigation.slice(2);
+const navLink = "link-line text-[0.72rem] font-bold uppercase tracking-[0.16em] text-muted transition-colors hover:text-pearl";
+---
+
+<header
+  data-site-header
+  data-home={isHome ? "true" : "false"}
+  class:list={[
+    "z-40 transition-[transform,background-color] duration-300 will-change-transform",
+    isHome ? "fixed inset-x-0 top-0 bg-transparent" : "sticky top-0 bg-ink",
+  ]}
+>
+  <div class="shell grid h-[4.5rem] grid-cols-[1fr_auto_1fr] items-center gap-4" data-header-bar>
+    <div class="flex items-center gap-7">
+      <button
+        type="button"
+        class="-ml-2.5 grid h-10 w-10 place-items-center text-pearl transition hover:text-gold lg:hidden"
+        aria-expanded="false"
+        aria-controls="site-menu"
+        aria-label="Open menu"
+        data-menu-toggle
+      >
+        <span class="grid" data-icon-open><LocalIcon name="menu" class="h-5 w-5" /></span>
+        <span class="grid hidden" data-icon-close><LocalIcon name="x" class="h-5 w-5" /></span>
+      </button>
+
+      <nav class="hidden items-center gap-7 lg:flex" aria-label="Primary navigation">
+        <button
+          type="button"
+          class:list={[
+            "group inline-flex items-center gap-1.5 text-[0.72rem] font-bold uppercase tracking-[0.16em] transition-colors hover:text-pearl aria-expanded:text-gold",
+            currentPath.startsWith("/category/") ? "text-gold" : "text-muted",
+          ]}
+          aria-expanded="false"
+          aria-controls="site-menu"
+          data-menu-trigger
+        >
+          Departments
+          <LocalIcon name="chevron-down" class="h-3.5 w-3.5 transition-transform duration-300 group-aria-expanded:rotate-180" />
+        </button>
+        {
+          leftLinks.map((item) => (
+            <a class:list={[navLink, isActive(item.href) && "text-gold"]} href={item.href}>
+              {item.label}
+            </a>
+          ))
+        }
+      </nav>
+    </div>
+
+    <a class="justify-self-center text-center" href="/" aria-label={`${siteConfig.name} home`}>
+      <span class="display block text-3xl leading-none text-pearl md:text-4xl">{siteConfig.name}</span>
+    </a>
+
+    <div class="flex items-center justify-end gap-5">
+      <nav class="hidden items-center gap-7 lg:flex" aria-label="Secondary navigation">
+        {
+          rightLinks.map((item) => (
+            <a class:list={[navLink, isActive(item.href) && "text-gold"]} href={item.href}>
+              {item.label}
+            </a>
+          ))
+        }
+      </nav>
+
+      <button
+        type="button"
+        data-search-toggle
+        aria-label={`Search ${siteConfig.name}`}
+        aria-haspopup="dialog"
+        class="-mr-2.5 grid h-10 w-10 place-items-center text-muted transition hover:text-gold sm:mr-0"
+      >
+        <LocalIcon name="search" class="h-5 w-5" />
+      </button>
+
+      <a class="button button-primary button-sm hidden sm:inline-flex" href="#subscribe" data-menu-link>Subscribe</a>
+    </div>
+  </div>
+
+  <div
+    id="site-menu"
+    class="site-menu absolute inset-x-0 top-full h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain bg-ink lg:h-auto lg:overflow-visible lg:bg-charcoal lg:shadow-[0_40px_80px_-30px_rgb(0_0_0/0.75)]"
+    inert
+    data-menu
+  >
+    <nav class="shell py-6 lg:py-9" aria-label="Departments">
+      <ul class="grid grid-cols-2 gap-x-3 gap-y-6 lg:grid-cols-4 lg:gap-x-8 lg:gap-y-6">
+        {
+          categories.map((category) => (
+            <li>
+              <a
+                class="group block lg:grid lg:grid-cols-[6.5rem_1fr] lg:items-center lg:gap-4"
+                href={`/category/${category.slug}/`}
+                data-menu-link
+                aria-current={currentPath.startsWith(`/category/${category.slug}/`) ? "page" : undefined}
+              >
+                <span class="block aspect-[4/3] overflow-hidden bg-panel">
+                  <Image
+                    src={category.image}
+                    alt=""
+                    widths={[240, 480, 640]}
+                    sizes="(min-width: 1024px) 6.5rem, 50vw"
+                    loading="lazy"
+                    class="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                  />
+                </span>
+                <span class="mt-3 block lg:mt-0">
+                  <span class="display block text-xl leading-tight text-pearl transition-colors group-hover:text-gold group-aria-[current=page]:text-gold">
+                    {category.name}
+                  </span>
+                  <span class="mt-1 hidden text-sm leading-snug text-muted sm:block">{category.tagline}</span>
+                </span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="mt-10 grid gap-1 lg:hidden">
+        {
+          siteConfig.navigation.map((item) => (
+            <a class:list={["display py-2 text-3xl leading-tight transition-colors hover:text-gold", isActive(item.href) ? "text-gold" : "text-pearl"]} href={item.href} data-menu-link>
+              {item.label}
+            </a>
+          ))
+        }
+        <a class="button button-primary mt-6 w-full sm:hidden" href="#subscribe" data-menu-link>Subscribe</a>
+      </div>
+
+      <a class="group mt-7 hidden items-center gap-2 text-sm font-semibold text-muted transition-colors hover:text-gold lg:inline-flex" href="/blog/" data-menu-link>
+        Browse every story
+        <LocalIcon name="arrow-right" class="h-4 w-4 transition-transform group-hover:translate-x-1" />
+      </a>
+    </nav>
+  </div>
+</header>
+
+<SearchDialog />
+
+<style>
+  .site-menu {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-0.5rem);
+    transition:
+      opacity 0.25s ease,
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 0.35s;
+  }
+
+  [data-menu-open] .site-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+      opacity 0.25s ease,
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+</style>
+
+<script>
+  const header = document.querySelector<HTMLElement>("[data-site-header]");
+  const menu = header?.querySelector<HTMLElement>("[data-menu]");
+  const bar = header?.querySelector<HTMLElement>("[data-header-bar]");
+  const trigger = header?.querySelector<HTMLButtonElement>("[data-menu-trigger]");
+  const toggle = header?.querySelector<HTMLButtonElement>("[data-menu-toggle]");
+
+  if (header && menu && bar) {
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    let open = false;
+    let hoverTimer = 0;
+    let lastScrollY = window.scrollY;
+    let hasScrolledDown = false;
+    let ticking = false;
+
+    const renderSurface = () => {
+      const transparent = header.dataset.home === "true" && window.scrollY <= 16 && !open;
+      header.classList.toggle("bg-transparent", transparent);
+      header.classList.toggle("bg-ink", !transparent);
+    };
+
+    const setOpen = (next: boolean, { focus = false } = {}) => {
+      if (open === next) return;
+      open = next;
+      window.clearTimeout(hoverTimer);
+      header.toggleAttribute("data-menu-open", open);
+      menu.inert = !open;
+      trigger?.setAttribute("aria-expanded", String(open));
+      toggle?.setAttribute("aria-expanded", String(open));
+      toggle?.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      toggle?.querySelector("[data-icon-open]")?.classList.toggle("hidden", open);
+      toggle?.querySelector("[data-icon-close]")?.classList.toggle("hidden", !open);
+      // The mobile menu fills the screen, so the page behind it stops scrolling.
+      document.documentElement.style.overflow = open && !desktop.matches ? "hidden" : "";
+      header.classList.remove("-translate-y-full");
+      renderSurface();
+      if (open && focus) menu.querySelector<HTMLElement>("a")?.focus();
+    };
+
+    trigger?.addEventListener("click", () => setOpen(!open));
+    trigger?.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown") return;
+      event.preventDefault();
+      setOpen(true, { focus: true });
+    });
+    toggle?.addEventListener("click", () => setOpen(!open));
+
+    // Hover opens the desktop menu; leaving both the trigger and the panel closes it after a short grace.
+    const hoverZones = [trigger, menu].filter((zone): zone is HTMLElement => Boolean(zone));
+    hoverZones.forEach((zone) => {
+      zone.addEventListener("pointerenter", () => {
+        if (!finePointer.matches || !desktop.matches) return;
+        window.clearTimeout(hoverTimer);
+        hoverTimer = window.setTimeout(() => setOpen(true), open ? 0 : 90);
+      });
+      zone.addEventListener("pointerleave", () => {
+        if (!finePointer.matches || !desktop.matches) return;
+        window.clearTimeout(hoverTimer);
+        hoverTimer = window.setTimeout(() => setOpen(false), 220);
+      });
+    });
+
+    menu.querySelectorAll("[data-menu-link]").forEach((link) => link.addEventListener("click", () => setOpen(false)));
+    header.querySelectorAll("[data-header-bar] [data-menu-link]").forEach((link) => link.addEventListener("click", () => setOpen(false)));
+
+    document.addEventListener("pointerdown", (event) => {
+      if (open && !header.contains(event.target as Node)) setOpen(false);
+    });
+
+    header.addEventListener("focusout", (event) => {
+      const next = event.relatedTarget as Node | null;
+      if (open && next && !header.contains(next)) setOpen(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !open) return;
+      setOpen(false);
+      (desktop.matches ? trigger : toggle)?.focus();
+    });
+
+    desktop.addEventListener("change", () => setOpen(false));
+
+    // Hide while scrolling down, return on scroll up. Never hides near the top or while the menu is open.
+    const renderHeader = () => {
+      const y = Math.max(window.scrollY, 0);
+      const pastHeader = y > 96;
+      if (y <= 16 || open) header.classList.remove("-translate-y-full");
+      else if (y > lastScrollY + 4 && pastHeader) {
+        hasScrolledDown = true;
+        header.classList.add("-translate-y-full");
+      } else if (y < lastScrollY - 4 && hasScrolledDown) header.classList.remove("-translate-y-full");
+      renderSurface();
+      lastScrollY = y;
+    };
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(() => {
+          renderHeader();
+          ticking = false;
+        });
+      },
+      { passive: true },
+    );
+    header.addEventListener("focusin", () => header.classList.remove("-translate-y-full"));
+    renderHeader();
+  }
+</script>

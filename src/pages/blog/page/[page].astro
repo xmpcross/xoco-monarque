@@ -1,0 +1,70 @@
+---
+import { getCollection } from "astro:content";
+import ArchiveGrid from "@/components/ArchiveGrid.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {
+  assertValidContentRelationships,
+  categories,
+  categoryHref,
+  getAllTags,
+  paginatePosts,
+  tagHref,
+  visiblePosts,
+} from "@/lib/content";
+
+export async function getStaticPaths() {
+  const posts = visiblePosts(await getCollection("posts"));
+  const { page } = paginatePosts(posts, 1, "/blog/");
+
+  return Array.from({ length: Math.max(page.totalPages - 1, 0) }, (_, index) => {
+    const currentPage = index + 2;
+    const paginated = paginatePosts(posts, currentPage, "/blog/");
+
+    return {
+      params: { page: String(currentPage) },
+      props: { posts, paginatedPosts: paginated.posts, page: paginated.page },
+    };
+  });
+}
+
+const allPosts = await getCollection("posts");
+const authors = await getCollection("authors");
+assertValidContentRelationships(allPosts, authors);
+
+const { posts, paginatedPosts, page } = Astro.props as {
+  posts: Awaited<ReturnType<typeof getCollection<"posts">>>;
+  paginatedPosts: Awaited<ReturnType<typeof getCollection<"posts">>>;
+  page: ReturnType<typeof paginatePosts>["page"];
+};
+const tags = getAllTags(posts);
+---
+
+<BaseLayout
+  title={`Latest Stories - Page ${page.currentPage}`}
+  description={`Browse page ${page.currentPage} of the Monarque story archive.`}
+>
+  <section class="mx-auto max-w-[1440px] px-6 py-16 md:px-10 md:py-24">
+    <h1 class="display max-w-4xl text-5xl leading-tight md:text-7xl">Latest stories from Monarque</h1>
+    <p class="mt-5 max-w-3xl text-lg leading-relaxed text-muted md:text-xl">
+      Page {page.currentPage} of the complete editorial archive.
+    </p>
+
+    <nav class="mt-10 flex flex-wrap gap-3" aria-label="Browse by category">
+      {categories.map((category) => (
+        <a class="chip" href={categoryHref(category.slug)}>{category.name}</a>
+      ))}
+    </nav>
+
+    {tags.length > 0 && (
+      <nav class="mt-6 flex flex-wrap gap-3" aria-label="Browse by tag">
+        {tags.map((tag) => (
+          <a class="link-line text-sm uppercase tracking-[0.14em] text-muted hover:text-pearl" href={tagHref(tag.name)}>
+            #{tag.name}
+          </a>
+        ))}
+      </nav>
+    )}
+
+    <ArchiveGrid posts={paginatedPosts} page={page} />
+  </section>
+</BaseLayout>

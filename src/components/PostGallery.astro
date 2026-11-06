@@ -1,0 +1,12 @@
+---
+import PhotoGallery from "@/components/PhotoGallery.astro";
+
+/**
+ * `<Gallery />` inside an MDX post: places the frontmatter gallery at that
+ * point instead of after the article. The post page passes the photos
+ * through `Astro.locals`, so the tag needs no props.
+ */
+const photos = Astro.locals.postGallery ?? [];
+---
+
+<PhotoGallery photos={photos} />

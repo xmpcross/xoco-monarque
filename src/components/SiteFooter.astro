@@ -1,0 +1,126 @@
+---
+import { categories } from "@/config/categories";
+import { siteConfig } from "@/config/site";
+import LocalIcon from "@/components/LocalIcon.astro";
+
+const socialIcons = {
+  Instagram: "social-instagram",
+  RSS: "social-rss",
+  X: "social-x",
+} as const;
+
+const usefulLinks = [
+  { label: "Latest", href: "/blog/" },
+  { label: "Authors", href: "/authors/" },
+  { label: "About", href: "/about/" },
+  { label: "Contact", href: "/contact/" },
+];
+
+const newsletter = siteConfig.forms?.newsletter ?? siteConfig.newsletter;
+const { subscribe } = siteConfig;
+const year = new Date().getFullYear();
+---
+
+<footer class="bg-charcoal">
+  <div class="shell grid gap-14 py-16 md:py-20 lg:grid-cols-12 lg:gap-10">
+    <section id="subscribe" class="scroll-mt-28 lg:col-span-5" aria-labelledby="subscribe-title">
+      <h2 id="subscribe-title" class="display text-4xl leading-tight md:text-5xl">{subscribe.title}</h2>
+      <p class="mt-4 max-w-md text-base leading-relaxed text-muted">{subscribe.description}</p>
+      <form
+        action={newsletter.action || undefined}
+        method={newsletter.method}
+        class="mt-7 flex max-w-md gap-2 border border-line bg-ink p-1.5 transition-colors focus-within:border-gold"
+      >
+        {
+          newsletter.honeypotFieldName && (
+            <div class="hidden" aria-hidden="true">
+              <label for="subscribe-company">Company</label>
+              <input id="subscribe-company" name={newsletter.honeypotFieldName} tabindex="-1" autocomplete="off" />
+            </div>
+          )
+        }
+        <label class="sr-only" for="subscribe-email">Email address</label>
+        <input
+          id="subscribe-email"
+          name={newsletter.emailFieldName}
+          type="email"
+          autocomplete="email"
+          required
+          placeholder="reader@example.com"
+          class="min-w-0 flex-1 bg-transparent px-4 text-pearl outline-none placeholder:text-muted/70"
+        />
+        <button class="button button-primary button-sm" type="submit">Subscribe</button>
+      </form>
+    </section>
+
+    <div class="grid gap-10 sm:grid-cols-3 lg:col-span-7 lg:col-start-6">
+      <nav class="sm:col-span-2" aria-label="Footer sections">
+        <p class="text-sm font-semibold text-pearl">Departments</p>
+        <ul class="mt-5 grid grid-cols-2 gap-x-6 gap-y-2.5">
+          {
+            categories.map((category) => (
+              <li>
+                <a class="link-line text-muted hover:text-pearl" href={`/category/${category.slug}/`}>
+                  {category.name}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <div>
+        <nav aria-label="Useful links">
+          <p class="text-sm font-semibold text-pearl">Useful Links</p>
+          <ul class="mt-5 grid gap-2.5">
+            {
+              usefulLinks.map((item) => (
+                <li>
+                  <a class="link-line text-muted hover:text-pearl" href={item.href}>
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+
+        <nav class="mt-9" aria-label="Social links">
+          <p class="text-sm font-semibold text-pearl">Follow</p>
+          <ul class="mt-4 flex items-center gap-2">
+            {
+              siteConfig.socials.map((item) => (
+                <li>
+                  <a
+                    class="grid h-10 w-10 place-items-center border border-line text-muted transition hover:border-gold hover:text-gold [&_path]:fill-current"
+                    href={item.href}
+                    aria-label={item.label === "RSS" ? "RSS feed" : item.label}
+                  >
+                    <LocalIcon name={socialIcons[item.label as keyof typeof socialIcons]} class="h-4 w-4" />
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-ink">
+    <div class="shell flex flex-col gap-3 py-5 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+      <p>&copy; {year} {siteConfig.name}. All rights reserved.</p>
+      <ul class="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {
+          siteConfig.legalLinks.map((item) => (
+            <li>
+              <a class="link-line hover:text-pearl" href={item.href}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</footer>

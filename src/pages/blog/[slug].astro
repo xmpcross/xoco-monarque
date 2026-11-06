@@ -1,0 +1,265 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, render } from "astro:content";
+import GithubSlugger from "github-slugger";
+import ImageCredit from "@/components/ImageCredit.astro";
+import PhotoGallery from "@/components/PhotoGallery.astro";
+import PostCard from "@/components/PostCard.astro";
+import PostGallery from "@/components/PostGallery.astro";
+import ShareButton from "@/components/ShareButton.astro";
+import ShareCard from "@/components/ShareCard.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {
+  authorHref,
+  categoryHref,
+  entrySlug,
+  formatDate,
+  getCategory,
+  getRelatedPosts,
+  postHref,
+  readingMinutes,
+  tagHref,
+  visiblePosts,
+  type Post,
+} from "@/lib/content";
+import { siteConfig } from "@/config/site";
+
+export async function getStaticPaths() {
+  const posts = visiblePosts(await getCollection("posts"));
+  return posts.map((post) => ({
+    params: { slug: entrySlug(post) },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props as { post: Post };
+const posts = visiblePosts(await getCollection("posts"));
+const authors = await getCollection("authors");
+const author = authors.find((item) => entrySlug(item) === post.data.author);
+const category = getCategory(post.data.category);
+const related = getRelatedPosts(posts, post);
+const { Content } = await render(post);
+const canonical = new URL(postHref(post), siteConfig.siteUrl).toString();
+const imageUrl = new URL(post.data.cover.src.src, siteConfig.siteUrl).toString();
+
+// An MDX post can place the gallery itself with `<Gallery />`; otherwise it follows the article.
+Astro.locals.postGallery = post.data.gallery;
+const galleryInBody = Boolean(post.filePath?.endsWith(".mdx")) && /<Gallery\s*\/>/.test(post.body ?? "");
+
+const headingSlugger = new GithubSlugger();
+const stripMarkdown = (value: string) =>
+  value
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[`*_~]/g, "")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+const headings = (post.body ?? "")
+  .split("\n")
+  .map((line) => line.match(/^(#{2,3})\s+(.+?)\s*#*$/))
+  .filter((match): match is RegExpMatchArray => Boolean(match))
+  .map((match) => {
+    const depth = match[1].length;
+    const text = stripMarkdown(match[2]);
+    return { depth, text, id: headingSlugger.slug(text) };
+  })
+  .filter((heading) => heading.text);
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: post.data.title,
+  description: post.data.excerpt,
+  image: imageUrl,
+  datePublished: post.data.date.toISOString(),
+  dateModified: (post.data.updatedDate ?? post.data.date).toISOString(),
+  keywords: post.data.tags,
+  author: {
+    "@type": "Person",
+    name: author?.data.name ?? siteConfig.authorName,
+  },
+  publisher: {
+    "@type": "Organization",
+    name: siteConfig.name,
+  },
+  mainEntityOfPage: canonical,
+};
+---
+
+<BaseLayout title={post.data.title} description={post.data.excerpt} image={post.data.cover.src.src} type="article" structuredData={articleSchema}>
+  <article>
+    <header class="shell max-w-[1180px] pb-10 pt-12 md:pb-14 md:pt-20">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-3 text-xs uppercase tracking-[0.16em] text-muted">
+        {category && <a class="chip normal-case tracking-normal text-gold" href={categoryHref(category.slug)}>{category.name}</a>}
+        <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+        <span aria-hidden="true" class="h-1 w-1 bg-muted/60"></span>
+        <span>{readingMinutes(post)} min read</span>
+      </div>
+      <h1 class="display mt-7 max-w-5xl text-5xl leading-[1.04] text-balance md:text-7xl">{post.data.title}</h1>
+      <p class="mt-6 max-w-3xl text-lg leading-relaxed text-muted md:text-xl">{post.data.subtitle}</p>
+      <div class="mt-9 flex flex-wrap items-center justify-between gap-5 border-t border-line pt-6">
+        {author ? (
+          <a class="group flex items-center gap-3.5" href={authorHref(author)}>
+            <Image src={author.data.avatar.src} alt="" width={96} height={96} class="h-12 w-12 rounded-full object-cover ring-1 ring-line" />
+            <span>
+              <span class="block font-semibold text-pearl transition-colors group-hover:text-gold">{author.data.name}</span>
+              <span class="block text-sm text-muted">{author.data.role}</span>
+            </span>
+          </a>
+        ) : (
+          <span></span>
+        )}
+        <ShareButton title={post.data.title} url={canonical} class="button-ghost button-sm" />
+      </div>
+    </header>
+
+    <figure class="shell">
+      <Image
+        src={post.data.cover.src}
+        alt={post.data.cover.alt}
+        widths={[768, 1200, 1600, 2200]}
+        sizes="(min-width: 1440px) 1360px, 100vw"
+        loading="eager"
+        fetchpriority="high"
+        class="aspect-[16/10] w-full object-cover md:aspect-[16/9]"
+      />
+      <figcaption class="pt-3">
+        <ImageCredit name={post.data.cover.credit.name} url={post.data.cover.credit.url} />
+      </figcaption>
+    </figure>
+
+    <div
+      class:list={[
+        "shell grid max-w-[1180px] gap-10 py-12 md:py-16",
+        headings.length > 0 && "md:grid-cols-[13rem_1fr] lg:grid-cols-[15rem_1fr] lg:gap-16",
+      ]}
+    >
+      {headings.length > 0 && (
+        <aside class="hidden text-sm text-muted md:block">
+          <nav class="article-toc sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-4" aria-labelledby="article-toc-title" data-article-toc>
+            <p id="article-toc-title" class="text-sm font-semibold text-pearl">Contents</p>
+            <div class="article-toc__body">
+              <span class="article-toc__rail" aria-hidden="true"></span>
+              <ol class="article-toc__list grid gap-1">
+                {headings.map((heading) => (
+                  <li>
+                    <a href={`#${heading.id}`} data-toc-link class:list={["article-toc__link", heading.depth === 3 && "article-toc__link--sub"]}>
+                      {heading.text}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </nav>
+        </aside>
+      )}
+
+      <div class:list={["min-w-0", headings.length === 0 && "mx-auto w-full max-w-3xl"]}>
+        <div class="prose article-prose">
+          <Content components={{ Gallery: PostGallery }} />
+        </div>
+
+        {post.data.gallery.length > 0 && !galleryInBody && (
+          <section class="mt-14" aria-labelledby="gallery-title">
+            <h2 id="gallery-title" class="display mb-6 text-4xl">From the story</h2>
+            <PhotoGallery photos={post.data.gallery} />
+          </section>
+        )}
+
+        {post.data.tags.length > 0 && (
+          <nav class="mt-14 flex flex-wrap items-center gap-2.5" aria-label="Article tags">
+            <span class="mr-2 text-xs font-bold uppercase tracking-[0.16em] text-muted">Filed under</span>
+            {post.data.tags.map((tag) => (
+              <a class="chip" href={tagHref(tag)}>
+                #{tag}
+              </a>
+            ))}
+          </nav>
+        )}
+
+        <div class="mt-10 grid gap-5">
+          <ShareCard title={post.data.title} />
+
+          {author && (
+            <a href={authorHref(author)} class="surface group grid gap-5 p-6 transition-colors hover:border-gold/50 sm:grid-cols-[5rem_1fr] md:p-8">
+              <Image src={author.data.avatar.src} alt={author.data.avatar.alt} width={160} height={160} class="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20" />
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-muted">Written by</p>
+                <p class="display mt-1 text-3xl leading-tight transition-colors group-hover:text-gold">{author.data.name}</p>
+                <p class="mt-1 text-sm text-muted">{author.data.role} &middot; {author.data.location}</p>
+                <p class="mt-3 text-[0.95rem] leading-relaxed text-pearl/80">{author.data.bio}</p>
+              </div>
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  </article>
+
+  {related.length > 0 && (
+    <section class="pb-16 pt-8 md:pb-24 md:pt-12" aria-labelledby="related-title">
+      <div class="shell">
+        <div class="flex flex-wrap items-end justify-between gap-6">
+          <h2 id="related-title" class="display text-4xl md:text-5xl">More from {siteConfig.name}</h2>
+          <a class="button button-ghost button-sm" href="/blog/">All stories</a>
+        </div>
+        <div class="mt-10 grid gap-10 md:grid-cols-3">
+          {related.map((item) => <PostCard post={item} />)}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <script>
+    document.querySelectorAll<HTMLElement>("[data-article-toc]").forEach((toc) => {
+      const links = Array.from(toc.querySelectorAll<HTMLAnchorElement>("[data-toc-link]"));
+      const sections = links
+        .map((link) => {
+          const id = link.hash.slice(1);
+          return id ? document.getElementById(id) : null;
+        })
+        .filter((section): section is HTMLElement => Boolean(section));
+
+      if (!links.length || !sections.length) return;
+
+      const setActiveLink = (activeId: string) => {
+        const activeIndex = links.findIndex((link) => link.hash === `#${activeId}`);
+        links.forEach((link, index) => {
+          const isActive = index === activeIndex;
+          link.classList.toggle("is-active", isActive);
+          if (isActive) link.setAttribute("aria-current", "location");
+          else link.removeAttribute("aria-current");
+        });
+      };
+
+      let ticking = false;
+      const updateActiveLink = () => {
+        const marker = Math.min(window.innerHeight * 0.32, 320);
+        let active = sections[0];
+        for (const section of sections) {
+          if (section.getBoundingClientRect().top <= marker) active = section;
+          else break;
+        }
+        setActiveLink(active.id);
+      };
+
+      const queueUpdate = () => {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(() => {
+          updateActiveLink();
+          ticking = false;
+        });
+      };
+
+      links.forEach((link) => {
+        link.addEventListener("click", () => {
+          const id = link.hash.slice(1);
+          if (id) setActiveLink(id);
+        });
+      });
+      window.addEventListener("scroll", queueUpdate, { passive: true });
+      window.addEventListener("resize", queueUpdate);
+      updateActiveLink();
+    });
+  </script>
+</BaseLayout>

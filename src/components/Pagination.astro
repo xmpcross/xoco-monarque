@@ -1,0 +1,33 @@
+---
+import type { PaginationPage } from "@/lib/content";
+
+interface Props {
+  page: PaginationPage;
+}
+
+const { page } = Astro.props;
+---
+
+{
+  page.totalPages > 1 && (
+    <nav class="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-8" aria-label="Pagination">
+      <a
+        class:list={["button button-ghost", !page.previousHref && "pointer-events-none opacity-45"]}
+        href={page.previousHref ?? page.basePath}
+        aria-disabled={!page.previousHref ? "true" : undefined}
+      >
+        Previous
+      </a>
+      <p class="text-sm uppercase tracking-[0.16em] text-muted">
+        Page {page.currentPage} of {page.totalPages}
+      </p>
+      <a
+        class:list={["button button-ghost", !page.nextHref && "pointer-events-none opacity-45"]}
+        href={page.nextHref ?? page.basePath}
+        aria-disabled={!page.nextHref ? "true" : undefined}
+      >
+        Next
+      </a>
+    </nav>
+  )
+}

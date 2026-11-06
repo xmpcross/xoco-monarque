@@ -1,0 +1,14 @@
+---
+interface Props {
+  name: string;
+  url: string;
+  class?: string;
+}
+
+const { name, url, class: className = "" } = Astro.props;
+---
+
+<p class:list={["text-xs leading-snug text-muted/75", className]}>
+  Photo:{" "}
+  <a class="link-line" href={url} rel="noreferrer" target="_blank">{name}</a>
+</p>

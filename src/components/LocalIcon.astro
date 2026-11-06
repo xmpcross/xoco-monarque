@@ -1,0 +1,66 @@
+---
+import arrowRight from "@/icons/arrow-right.svg?raw";
+import arrowUpRight from "@/icons/arrow-up-right.svg?raw";
+import chevronDown from "@/icons/chevron-down.svg?raw";
+import chevronLeft from "@/icons/chevron-left.svg?raw";
+import chevronRight from "@/icons/chevron-right.svg?raw";
+import maximize from "@/icons/maximize-2.svg?raw";
+import menu from "@/icons/menu.svg?raw";
+import search from "@/icons/search.svg?raw";
+import socialInstagram from "@/icons/social-instagram.svg?raw";
+import socialRss from "@/icons/social-rss.svg?raw";
+import socialX from "@/icons/social-x.svg?raw";
+import x from "@/icons/x.svg?raw";
+import bluesky from "@/icons/bootstrap/bluesky.svg?raw";
+import clipboard from "@/icons/bootstrap/clipboard.svg?raw";
+import envelope from "@/icons/bootstrap/envelope.svg?raw";
+import facebook from "@/icons/bootstrap/facebook.svg?raw";
+import linkedin from "@/icons/bootstrap/linkedin.svg?raw";
+import pinterest from "@/icons/bootstrap/pinterest.svg?raw";
+import reddit from "@/icons/bootstrap/reddit.svg?raw";
+import share from "@/icons/bootstrap/share.svg?raw";
+import telegram from "@/icons/bootstrap/telegram.svg?raw";
+import threads from "@/icons/bootstrap/threads.svg?raw";
+import threeDots from "@/icons/bootstrap/three-dots.svg?raw";
+import twitterX from "@/icons/bootstrap/twitter-x.svg?raw";
+import whatsapp from "@/icons/bootstrap/whatsapp.svg?raw";
+
+const icons = {
+  "arrow-right": arrowRight,
+  "arrow-up-right": arrowUpRight,
+  "chevron-down": chevronDown,
+  "chevron-left": chevronLeft,
+  "chevron-right": chevronRight,
+  "maximize-2": maximize,
+  menu,
+  search,
+  "social-instagram": socialInstagram,
+  "social-rss": socialRss,
+  "social-x": socialX,
+  x,
+  bluesky,
+  clipboard,
+  envelope,
+  facebook,
+  linkedin,
+  pinterest,
+  reddit,
+  share,
+  telegram,
+  threads,
+  "three-dots": threeDots,
+  "twitter-x": twitterX,
+  whatsapp,
+};
+
+export type LocalIconName = keyof typeof icons;
+
+interface Props {
+  name: LocalIconName;
+  class?: string;
+}
+
+const { name, class: className = "h-4 w-4" } = Astro.props;
+---
+
+<span class:list={["inline-grid place-items-center [&>svg]:h-full [&>svg]:w-full", className]} aria-hidden="true" set:html={icons[name]} />

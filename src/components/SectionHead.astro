@@ -1,0 +1,25 @@
+---
+import LocalIcon from "@/components/LocalIcon.astro";
+
+interface Props {
+  title: string;
+  /** Heading id, for `aria-labelledby` on the section. */
+  id?: string;
+  href?: string;
+  linkLabel?: string;
+}
+
+const { title, id, href, linkLabel } = Astro.props;
+---
+
+<div class="flex flex-wrap items-end justify-between gap-6">
+  <h2 id={id} class="display text-4xl leading-tight md:text-5xl">{title}</h2>
+  {
+    href && linkLabel && (
+      <a class="group inline-flex items-center gap-2 text-sm font-semibold text-muted transition-colors hover:text-gold" href={href}>
+        {linkLabel}
+        <LocalIcon name="arrow-right" class="h-4 w-4 transition-transform group-hover:translate-x-1" />
+      </a>
+    )
+  }
+</div>

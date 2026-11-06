@@ -1,0 +1,389 @@
+---
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import LocalIcon from "@/components/LocalIcon.astro";
+
+/**
+ * Justified rows: each row runs the full width at one height and every frame
+ * keeps its own proportions. Rows follow the writer's order.
+ */
+interface Photo {
+  src: ImageMetadata;
+  alt: string;
+  credit: {
+    name: string;
+    url: string;
+  };
+}
+
+interface Props {
+  photos: Photo[];
+}
+
+const { photos } = Astro.props;
+const single = photos.length === 1;
+---
+
+{
+  photos.length > 0 && (
+    <figure class="not-prose" data-gallery-root>
+      <div class:list={["gallery-rows", single && "is-justified"]} data-gallery>
+        {photos.map((photo, i) => (
+          <button
+            type="button"
+            class="gallery-frame"
+            data-gallery-tile
+            data-index={i}
+            data-caption={photo.alt}
+            data-credit-name={photo.credit.name}
+            data-credit-url={photo.credit.url}
+            style={single ? `aspect-ratio: ${photo.src.width} / ${photo.src.height}` : undefined}
+            aria-label={`Open photo ${i + 1} of ${photos.length}: ${photo.alt}`}
+          >
+            <Image
+              src={photo.src}
+              alt={photo.alt}
+              widths={[480, 720, 960, 1280]}
+              sizes={single ? "(min-width: 1024px) 56rem, 100vw" : "(min-width: 1024px) 30vw, (min-width: 640px) 50vw, 100vw"}
+              loading="lazy"
+              decoding="async"
+            />
+          </button>
+        ))}
+      </div>
+
+      <div
+        data-gallery-lightbox
+        role="dialog"
+        aria-modal="true"
+        aria-label="Photo viewer"
+        class="fixed inset-0 z-[60] hidden touch-pan-y items-center justify-center bg-ink/95 p-4 backdrop-blur-sm sm:p-6"
+      >
+        <button
+          type="button"
+          aria-label="Close"
+          data-gallery-close
+          class="absolute right-4 top-4 z-10 grid h-11 w-11 place-items-center border border-pearl/30 text-pearl transition hover:border-gold hover:text-gold sm:right-6 sm:top-6"
+        >
+          <LocalIcon name="x" class="h-5 w-5" />
+        </button>
+        {!single && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous photo"
+              data-gallery-lb-prev
+              class="absolute left-4 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 place-items-center border border-pearl/30 bg-ink/70 text-pearl transition hover:border-gold hover:text-gold md:grid lg:left-6"
+            >
+              <LocalIcon name="chevron-left" class="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next photo"
+              data-gallery-lb-next
+              class="absolute right-4 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 place-items-center border border-pearl/30 bg-ink/70 text-pearl transition hover:border-gold hover:text-gold md:grid lg:right-6"
+            >
+              <LocalIcon name="chevron-right" class="h-5 w-5" />
+            </button>
+          </>
+        )}
+        <figure class="max-h-[88vh] w-full max-w-6xl">
+          {photos.map((photo, i) => (
+            <Image
+              src={photo.src}
+              alt={photo.alt}
+              widths={[720, 1080, 1440]}
+              sizes="90vw"
+              loading="lazy"
+              data-lightbox-image
+              data-index={i}
+              class="mx-auto hidden max-h-[78vh] w-auto max-w-full object-contain sm:max-h-[80vh]"
+            />
+          ))}
+          <figcaption class="mx-auto mt-4 grid max-w-3xl justify-items-center gap-1 text-center text-sm leading-snug text-pearl/85">
+            <span data-lightbox-caption />
+            <a data-lightbox-credit class="link-line text-xs text-muted" target="_blank" rel="noreferrer" />
+            {!single && <span data-lightbox-counter aria-live="polite" class="text-xs tabular-nums tracking-[0.16em] text-muted" />}
+          </figcaption>
+        </figure>
+      </div>
+    </figure>
+  )
+}
+
+<script>
+  /* Rows are planned for the whole set at once, so the reading order never changes. */
+  const SLOTS_WIDE = 3;
+  const SLOTS_NARROW = 2;
+  const FRAMES_MAX = 3;
+  const STACK_COST = 0.12;
+  const LONE_COST = 0.6;
+  /* A stack narrower than this share of the row is two thumbnails. */
+  const STACK_MIN_SHARE = 0.35;
+
+  type Slot = number[];
+  type Row = Slot[];
+
+  interface Board {
+    container: HTMLElement;
+    frames: HTMLElement[];
+    ratios: number[];
+    key: string;
+  }
+
+  /** Height per unit of width. */
+  const ratioOf = (frame: HTMLElement) => {
+    const image = frame.querySelector("img");
+    const width = Number(image?.getAttribute("width")) || image?.naturalWidth;
+    const height = Number(image?.getAttribute("height")) || image?.naturalHeight;
+    return width && height ? height / width : 1;
+  };
+
+  const plan = (ratios: number[], width: number, gap: number, slotsAcross: number): Row[] => {
+    const count = ratios.length;
+    const target = (width / slotsAcross) * 0.95;
+    const memo = new Map<number, { cost: number; rows: Row[] }>();
+
+    const slotAspect = (slot: Slot) => 1 / slot.reduce((sum, index) => sum + ratios[index], 0);
+
+    const rowCost = (slots: Row, isLast: boolean) => {
+      const aspects = slots.reduce((sum, slot) => sum + slotAspect(slot), 0);
+      const height = (width - gap * (slots.length - 1)) / aspects;
+      let cost = ((height - target) / target) ** 2;
+
+      if (height < target * 0.55) cost += 2;
+
+      slots.forEach((slot) => {
+        if (slot.length === 1) return;
+        cost += STACK_COST;
+        if (height * slotAspect(slot) < width * STACK_MIN_SHARE) cost += 2;
+      });
+      if (slots.length === 1 && !isLast) cost += LONE_COST;
+
+      return isLast ? cost * 0.5 : cost;
+    };
+
+    const solve = (start: number): { cost: number; rows: Row[] } => {
+      if (start >= count) return { cost: 0, rows: [] };
+
+      const cached = memo.get(start);
+      if (cached) return cached;
+
+      let best: { cost: number; rows: Row[] } | null = null;
+
+      const extend = (next: number, slots: Row) => {
+        if (slots.length) {
+          const isLast = next >= count;
+          const rest = isLast ? { cost: 0, rows: [] as Row[] } : solve(next);
+          const cost = rowCost(slots, isLast) + rest.cost;
+          if (!best || cost < best.cost) best = { cost, rows: [slots, ...rest.rows] };
+        }
+
+        const used = next - start;
+        if (next >= count || slots.length >= slotsAcross || used >= FRAMES_MAX) return;
+
+        extend(next + 1, [...slots, [next]]);
+
+        if (next + 1 < count && count > 2 && used + 2 <= FRAMES_MAX) {
+          extend(next + 2, [...slots, [next, next + 1]]);
+        }
+      };
+
+      extend(start, []);
+      const result = best ?? { cost: 0, rows: [] };
+      memo.set(start, result);
+      return result;
+    };
+
+    return solve(0).rows;
+  };
+
+  const build = ({ container, frames, ratios }: Board, rows: Row[]) => {
+    container.querySelectorAll(".gallery-row, .gallery-stack").forEach((node) => node.remove());
+    container.classList.add("is-justified");
+
+    rows.forEach((slots) => {
+      const row = document.createElement("div");
+      row.className = "gallery-row";
+
+      slots.forEach((slot) => {
+        const aspect = 1 / slot.reduce((sum, index) => sum + ratios[index], 0);
+
+        if (slot.length === 1) {
+          const frame = frames[slot[0]];
+          frame.style.setProperty("--slot-aspect", String(aspect));
+          row.append(frame);
+          return;
+        }
+
+        const stack = document.createElement("div");
+        stack.className = "gallery-stack";
+        stack.style.setProperty("--slot-aspect", String(aspect));
+
+        slot.forEach((index) => {
+          const frame = frames[index];
+          frame.style.setProperty("--stack-share", String(ratios[index]));
+          frame.style.removeProperty("--slot-aspect");
+          stack.append(frame);
+        });
+
+        row.append(stack);
+      });
+
+      container.append(row);
+    });
+  };
+
+  const layout = (board: Board) => {
+    const width = board.container.getBoundingClientRect().width;
+    const gap = Number.parseFloat(getComputedStyle(board.container).getPropertyValue("--gallery-gap")) || 0;
+    const slotsAcross = window.matchMedia("(min-width: 64rem)").matches ? SLOTS_WIDE : SLOTS_NARROW;
+    // Rounded so a scrollbar appearing does not replan on every frame.
+    const key = `${slotsAcross}:${Math.round(width / 40)}`;
+
+    if (!width || board.key === key) return;
+
+    board.key = key;
+    build(board, plan(board.ratios, width, gap, slotsAcross));
+  };
+
+  const boards: Board[] = [...document.querySelectorAll<HTMLElement>("[data-gallery]")]
+    .map((container) => {
+      const frames = [...container.querySelectorAll<HTMLElement>(".gallery-frame")];
+      return { container, frames, ratios: frames.map(ratioOf), key: "" };
+    })
+    .filter((board) => board.frames.length > 1);
+
+  if (boards.length) {
+    const run = () => boards.forEach(layout);
+    run();
+
+    let queued = false;
+    window.addEventListener(
+      "resize",
+      () => {
+        if (queued) return;
+        queued = true;
+        window.requestAnimationFrame(() => {
+          queued = false;
+          run();
+        });
+      },
+      { passive: true },
+    );
+  }
+
+  document.querySelectorAll<HTMLElement>("[data-gallery-root]").forEach((root) => {
+    const tiles = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-gallery-tile]"));
+    const total = tiles.length;
+    const lightbox = root.querySelector<HTMLElement>("[data-gallery-lightbox]");
+    if (!lightbox) return;
+
+    const images = Array.from(lightbox.querySelectorAll<HTMLImageElement>("[data-lightbox-image]"));
+    const caption = lightbox.querySelector<HTMLElement>("[data-lightbox-caption]");
+    const credit = lightbox.querySelector<HTMLAnchorElement>("[data-lightbox-credit]");
+    const counter = lightbox.querySelector<HTMLElement>("[data-lightbox-counter]");
+    const closeBtn = lightbox.querySelector<HTMLButtonElement>("[data-gallery-close]");
+    const prevBtn = lightbox.querySelector<HTMLButtonElement>("[data-gallery-lb-prev]");
+    const nextBtn = lightbox.querySelector<HTMLButtonElement>("[data-gallery-lb-next]");
+    // Revealed ancestors carry a transform, which would trap a fixed overlay; it opens from <body>.
+    const home = lightbox.parentNode;
+
+    let current: number | null = null;
+    let bodyOverflow = "";
+    let previouslyFocused: Element | null = null;
+    let startX = 0;
+    let startY = 0;
+    let pointerId: number | null = null;
+
+    const render = () => {
+      if (current === null) return;
+      images.forEach((img) => {
+        const active = Number(img.dataset.index) === current;
+        img.classList.toggle("hidden", !active);
+        if (active) img.loading = "eager";
+      });
+      const tile = tiles[current];
+      if (caption) caption.textContent = tile?.dataset.caption ?? "";
+      if (credit && tile) {
+        credit.textContent = `Photo: ${tile.dataset.creditName ?? ""}`;
+        credit.href = tile.dataset.creditUrl ?? "#";
+      }
+      if (counter) counter.textContent = `${current + 1} / ${total}`;
+    };
+
+    const open = (index: number) => {
+      current = index;
+      previouslyFocused = document.activeElement;
+      document.body.append(lightbox);
+      lightbox.classList.remove("hidden");
+      lightbox.classList.add("flex");
+      bodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      render();
+      closeBtn?.focus({ preventScroll: true });
+    };
+
+    const close = () => {
+      current = null;
+      lightbox.classList.add("hidden");
+      lightbox.classList.remove("flex");
+      document.body.style.overflow = bodyOverflow;
+      home?.append(lightbox);
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus({ preventScroll: true });
+      previouslyFocused = null;
+    };
+
+    const step = (by: number) => {
+      if (current === null || total < 2) return;
+      current = (current + by + total) % total;
+      render();
+    };
+
+    tiles.forEach((tile) => tile.addEventListener("click", () => open(Number(tile.dataset.index))));
+    closeBtn?.addEventListener("click", close);
+    prevBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      step(-1);
+    });
+    nextBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      step(1);
+    });
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) close();
+    });
+    lightbox.addEventListener("pointerdown", (e) => {
+      if (current === null || (e.target as HTMLElement).closest("button, a")) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      pointerId = e.pointerId;
+    });
+    lightbox.addEventListener("pointerup", (e) => {
+      if (current === null || pointerId !== e.pointerId) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      pointerId = null;
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+      step(dx < 0 ? 1 : -1);
+    });
+    lightbox.addEventListener("pointercancel", () => {
+      pointerId = null;
+    });
+    window.addEventListener("keydown", (e) => {
+      if (current === null) return;
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowRight") step(1);
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "Tab") {
+        // Keep focus inside the viewer while it is open.
+        const focusable = Array.from(lightbox.querySelectorAll<HTMLElement>("a[href], button")).filter(
+          (el) => el.offsetParent !== null,
+        );
+        const i = focusable.indexOf(document.activeElement as HTMLElement);
+        e.preventDefault();
+        focusable[(i + (e.shiftKey ? -1 : 1) + focusable.length) % focusable.length]?.focus();
+      }
+    });
+  });
+</script>

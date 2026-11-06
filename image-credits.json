@@ -1,0 +1,37 @@
+[
+  {
+    "paths": ["preview.webp", "public/og-image.png"],
+    "source": "Unsplash",
+    "sourceUrl": "https://unsplash.com/"
+  },
+  {
+    "paths": ["public/fonts/*.woff2"],
+    "source": "Google Fonts",
+    "sourceUrl": "https://fonts.google.com/"
+  },
+  {
+    "paths": ["src/icons/*.svg"],
+    "source": "Lucide",
+    "sourceUrl": "https://lucide.dev/"
+  },
+  {
+    "paths": ["src/icons/bootstrap/*.svg"],
+    "source": "Bootstrap Icons",
+    "sourceUrl": "https://icons.getbootstrap.com/"
+  },
+  {
+    "paths": ["src/assets/departments/*.jpg"],
+    "source": "Unsplash",
+    "sourceUrl": "https://unsplash.com/"
+  },
+  {
+    "paths": ["src/content/authors/*/avatar.jpg"],
+    "source": "Unsplash",
+    "sourceUrl": "https://unsplash.com/"
+  },
+  {
+    "paths": ["src/content/posts/*/*.jpg"],
+    "source": "Unsplash",
+    "sourceUrl": "https://unsplash.com/"
+  }
+]

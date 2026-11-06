@@ -1,0 +1,23 @@
+---
+import ShareButton from "@/components/ShareButton.astro";
+import ShareSheet from "@/components/ShareSheet.astro";
+import { siteConfig } from "@/config/site";
+
+/** Closes a story with a way to pass it on, and renders the page's one `ShareSheet`. */
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const url = new URL(Astro.url.pathname, siteConfig.siteUrl).toString();
+---
+
+<section
+  aria-labelledby="share-card-title"
+  class="surface flex flex-wrap items-center justify-between gap-x-6 gap-y-5 p-6 md:p-8"
+>
+  <h2 id="share-card-title" class="display text-3xl leading-tight">Enjoyed the read? Share the story.</h2>
+  <ShareButton title={title} url={url} />
+</section>
+
+<ShareSheet title={title} url={url} />

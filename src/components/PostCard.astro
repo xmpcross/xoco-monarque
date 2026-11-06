@@ -1,0 +1,68 @@
+---
+import { Image } from "astro:assets";
+import { getCategory, postHref, formatDate, readingMinutes, type Post } from "@/lib/content";
+
+interface Props {
+  post: Post;
+  variant?: "feature" | "grid" | "compact";
+  eager?: boolean;
+}
+
+const { post, variant = "grid", eager = false } = Astro.props;
+const category = getCategory(post.data.category);
+const href = postHref(post);
+const isCompact = variant === "compact";
+const isFeature = variant === "feature";
+---
+
+<article
+  class:list={[
+    "group w-full",
+    isCompact ? "grid grid-cols-[6.5rem_1fr] items-center gap-4 sm:grid-cols-[8.5rem_1fr] sm:gap-5" : "grid content-start gap-5",
+    isFeature ? "lg:grid-cols-[1.15fr_0.85fr] lg:items-end" : "",
+  ]}
+>
+  <a
+    href={href}
+    class:list={[
+      "relative block overflow-hidden bg-panel",
+      isCompact ? "aspect-square" : "aspect-[4/3]",
+      isFeature ? "lg:aspect-[16/10]" : "",
+    ]}
+    aria-label={`Read ${post.data.title}`}
+  >
+    <Image
+      src={post.data.cover.src}
+      alt={post.data.cover.alt}
+      widths={isCompact ? [240, 400] : [480, 768, 1024, 1400]}
+      sizes={isCompact ? "(min-width: 640px) 8.5rem, 6.5rem" : "(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"}
+      loading={eager ? "eager" : "lazy"}
+      class="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]"
+    />
+  </a>
+
+  <div class="min-w-0">
+    <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted">
+      {category && <a class="text-gold transition-colors hover:text-pearl" href={`/category/${category.slug}/`}>{category.name}</a>}
+      <span aria-hidden="true" class="h-1 w-1 bg-muted/60"></span>
+      <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date, "short")}</time>
+      {!isCompact && (
+        <>
+          <span aria-hidden="true" class="h-1 w-1 bg-muted/60"></span>
+          <span>{readingMinutes(post)} min</span>
+        </>
+      )}
+    </div>
+    <h3
+      class:list={[
+        "display leading-tight transition-colors group-hover:text-gold",
+        isFeature ? "mt-3 text-4xl md:text-5xl" : isCompact ? "mt-2 text-xl sm:text-2xl" : "mt-3 text-3xl",
+      ]}
+    >
+      <a href={href}>{post.data.title}</a>
+    </h3>
+    <p class:list={["text-muted", isCompact ? "mt-2 line-clamp-2 hidden text-sm leading-snug sm:block" : "mt-3 text-base leading-relaxed"]}>
+      {post.data.excerpt}
+    </p>
+  </div>
+</article>

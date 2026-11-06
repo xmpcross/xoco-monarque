@@ -1,0 +1,65 @@
+---
+import { getCollection } from "astro:content";
+import ArchiveGrid from "@/components/ArchiveGrid.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { categories, getPostsByCategory, paginatePosts, type Category } from "@/lib/content";
+import { siteConfig } from "@/config/site";
+
+export function getStaticPaths() {
+  return categories.map((category) => ({
+    params: { slug: category.slug },
+    props: { category },
+  }));
+}
+
+const { category } = Astro.props as { category: Category };
+const posts = getPostsByCategory(await getCollection("posts"), category.slug);
+const { posts: paginatedPosts, page } = paginatePosts(posts, 1, `/category/${category.slug}/`);
+const archiveUrl = new URL(`/category/${category.slug}/`, siteConfig.siteUrl).toString();
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: category.name,
+    description: category.description,
+    url: archiveUrl,
+    isPartOf: {
+      "@type": "WebSite",
+      name: siteConfig.name,
+      url: siteConfig.siteUrl,
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Archive",
+        item: new URL("/blog/", siteConfig.siteUrl).toString(),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: category.name,
+        item: archiveUrl,
+      },
+    ],
+  },
+];
+---
+
+<BaseLayout title={category.name} description={category.description} structuredData={structuredData}>
+  <section class="mx-auto max-w-[1440px] px-6 py-16 md:px-10 md:py-24">
+    <nav class="flex flex-wrap items-center gap-3 text-sm text-muted" aria-label="Breadcrumb">
+      <a class="link-line text-muted hover:text-pearl" href="/blog/">Archive</a>
+      <span aria-hidden="true">/</span>
+      <span class="text-gold" aria-current="page">{category.name}</span>
+    </nav>
+    <h1 class="display mt-4 max-w-4xl text-5xl leading-tight md:text-7xl">{category.name}</h1>
+    <p class="mt-5 max-w-3xl text-lg leading-relaxed text-muted md:text-xl">{category.description}</p>
+
+    <ArchiveGrid posts={paginatedPosts} page={page} />
+  </section>
+</BaseLayout>
